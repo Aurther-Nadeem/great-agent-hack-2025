@@ -1,0 +1,10 @@
+flask>=3.0.3
+requests>=2.32.3
+torch>=2.3.0
+transformer-lens>=2.1.0
+sentence-transformers>=3.0.1
+scikit-learn>=1.5.0
+einops>=0.7.0
+accelerate>=0.33.0
+datasets>=3.0.0
+sae-lens>=0.2.0

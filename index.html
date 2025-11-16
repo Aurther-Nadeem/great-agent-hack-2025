@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Introspective Auditor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        /* Simple arrow connector */
+        .connector {
+            position: relative;
+            text-align: center;
+            margin: 20px 0;
+            color: #4b5563; /* gray-600 */
+        }
+        .connector::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -20px;
+            height: 20px;
+            width: 2px;
+            background-color: #4b5563;
+        }
+        .connector::after {
+            content: '▼';
+            font-size: 1.25rem;
+        }
+    </style>
+</head>
+<body class="h-full text-gray-200 p-8">
+    <div class="max-w-4xl mx-auto">
+
+        <!-- Header -->
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-white">🏆 The Introspective Auditor</h1>
+            <p class="mt-2 text-lg text-gray-400">
+                A Graph-Based "Glass Box" for Probabilistic Failure Analysis. (Track B)
+            </p>
+        </div>
+
+        <!-- Playground Controls -->
+        <div class="mt-8 p-6 bg-gray-800 rounded-lg shadow-lg">
+            <div class="flex flex-col lg:flex-row lg:items-end space-y-4 lg:space-y-0 lg:space-x-4">
+                <div class="flex-grow">
+                    <label for="user-prompt" class="block text-sm font-medium text-gray-300">Run Agent Task</label>
+                    <input type="text" id="user-prompt" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-3" value="What's the weather in the capital of France?">
+                </div>
+                <div class="w-full lg:w-80">
+                    <label for="model-select" class="block text-sm font-medium text-gray-300">Target Foundation Model</label>
+                    <select id="model-select" class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm text-white p-3 focus:border-indigo-500 focus:ring-indigo-500" disabled>
+                        <option>Loading catalog...</option>
+                    </select>
+                    <p id="model-status" class="mt-1 text-xs text-yellow-300 hidden"></p>
+                </div>
+                <button id="run-agent-btn" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-md shadow-md transition duration-200 flex items-center justify-center">
+                    <svg id="loading-spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span id="run-btn-text">Run Audit</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 p-6 bg-gray-800 rounded-lg shadow-lg">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h3 class="text-xl font-semibold text-white">Automated Introspection Evaluation</h3>
+                    <p class="text-sm text-gray-400">Runs tampering scenarios inspired by the Anthropic paper and summarizes detection metrics.</p>
+                </div>
+                <div class="flex flex-col lg:flex-row gap-3 w-full md:w-auto">
+                    <button id="run-eval-btn" class="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-semibold py-2 px-4 rounded-md shadow-md flex items-center justify-center">
+                        <svg id="eval-spinner" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span id="eval-btn-text">Run Eval Suite</span>
+                    </button>
+                    <button id="toggle-metric-btn" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-md shadow-md disabled:opacity-40" disabled>Metric Framework</button>
+                    <div class="flex-1 flex flex-wrap gap-2">
+                        <input id="eval-count-input" type="number" min="1" step="1" placeholder="# scenarios" class="w-32 bg-gray-700 border border-gray-600 rounded-md shadow-sm text-white p-2 text-sm placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500">
+                        <input id="scenario-search" type="text" placeholder="Filter scenario id..." class="flex-1 bg-gray-700 border border-gray-600 rounded-md shadow-sm text-white p-2 text-sm placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500">
+                        <button id="prev-scenario-btn" class="px-3 py-2 bg-gray-700 text-white rounded-md text-sm" disabled>&larr;</button>
+                        <button id="next-scenario-btn" class="px-3 py-2 bg-gray-700 text-white rounded-md text-sm" disabled>&rarr;</button>
+                    </div>
+                </div>
+            </div>
+            <div id="eval-summary" class="mt-4 text-sm text-gray-300"></div>
+            <div id="eval-scenarios" class="mt-4 space-y-4"></div>
+            <div id="scenario-trace-viewer" class="hidden mt-4 bg-gray-900 border border-indigo-600 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                    <h4 id="trace-title" class="text-lg font-semibold text-white">Scenario Trace</h4>
+                    <button id="close-trace-btn" class="text-sm text-gray-400 hover:text-white">Close</button>
+                </div>
+                <pre id="trace-content" class="mt-3 text-xs text-gray-200 whitespace-pre-wrap"></pre>
+            </div>
+        </div>
+
+        <div id="metric-framework-panel" class="hidden mt-6 p-6 bg-gray-900 border border-amber-500 rounded-lg">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xl font-semibold text-white">Agent Evaluation Metrics Framework</h3>
+                <button id="close-metric-panel" class="text-sm text-gray-400 hover:text-white">Close</button>
+            </div>
+            <p class="mt-2 text-sm text-gray-400">Catalog of Graph / Probabilistic / Semantic metrics inspired by the Glass Box requirements.</p>
+            <div id="metric-framework-list" class="mt-4 space-y-4"></div>
+        </div>
+
+        <!-- 
+          "GLASS BOX" GRAPH VISUALIZER
+        -->
+        <div class="mt-8">
+            <h2 class="text-xl font-semibold text-white text-center">Audited Execution Graph</h2>
+            <div id="trace-visualizer" class="p-4 space-y-0 h-[40rem] overflow-y-auto">
+                <!-- Log entries will be injected here by JavaScript -->
+                <div id="trace-placeholder" class="text-center text-gray-500 py-16">
+                    <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <h3 class="mt-2 text-sm font-semibold">No trace to display</h3>
+                    <p class="mt-1 text-sm">Run an agent task to generate an audited graph.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const traceLog = document.getElementById('trace-visualizer');
+        const tracePlaceholder = document.getElementById('trace-placeholder');
+        const runBtn = document.getElementById('run-agent-btn');
+        const runBtnText = document.getElementById('run-btn-text');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const userInput = document.getElementById('user-prompt');
+        const modelSelect = document.getElementById('model-select');
+        const modelStatus = document.getElementById('model-status');
+        const evalBtn = document.getElementById('run-eval-btn');
+        const evalBtnText = document.getElementById('eval-btn-text');
+        const evalSpinner = document.getElementById('eval-spinner');
+        const evalCountInput = document.getElementById('eval-count-input');
+        const evalSummary = document.getElementById('eval-summary');
+        const evalScenarios = document.getElementById('eval-scenarios');
+        const toggleMetricBtn = document.getElementById('toggle-metric-btn');
+        const metricFrameworkPanel = document.getElementById('metric-framework-panel');
+        const metricFrameworkList = document.getElementById('metric-framework-list');
+        const closeMetricPanelBtn = document.getElementById('close-metric-panel');
+        const scenarioTraceViewer = document.getElementById('scenario-trace-viewer');
+        const traceTitle = document.getElementById('trace-title');
+        const traceContent = document.getElementById('trace-content');
+        const closeTraceBtn = document.getElementById('close-trace-btn');
+        const scenarioSearch = document.getElementById('scenario-search');
+        const prevScenarioBtn = document.getElementById('prev-scenario-btn');
+        const nextScenarioBtn = document.getElementById('next-scenario-btn');
+        let lastEvalData = null;
+        let metricFrameworkData = null;
+        let filteredScenarios = [];
+        let currentScenarioIndex = -1;
+        let defaultModelId = null;
+
+        const API_BASE =
+            window.location.origin && window.location.origin.startsWith("http")
+                ? window.location.origin
+                : "http://127.0.0.1:5000";
+
+        const FALLBACK_MODEL_CATALOG = {
+            default: "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+            catalog: [
+                {
+                    category: "Anthropic Claude Series",
+                    models: [
+                        { id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0", label: "Claude 3.5 Sonnet (2024-10-22)", note: "Recommended" },
+                        { id: "us.anthropic.claude-3-5-haiku-20241022-v1:0", label: "Claude 3.5 Haiku (2024-10-22)", note: "Fast" },
+                        { id: "us.anthropic.claude-3-opus-20240229-v1:0", label: "Claude 3 Opus (2024-02-29)", note: "Most Powerful" },
+                        { id: "us.anthropic.claude-3-sonnet-20240229-v1:0", label: "Claude 3 Sonnet (2024-02-29)", note: "" },
+                        { id: "us.anthropic.claude-3-haiku-20240307-v1:0", label: "Claude 3 Haiku (2024-03-07)", note: "Fastest" },
+                        { id: "us.anthropic.claude-opus-4-20250514-v1:0", label: "Claude Opus 4 (2025-05-14)", note: "" },
+                        { id: "us.anthropic.claude-sonnet-4-20250514-v1:0", label: "Claude Sonnet 4 (2025-05-14)", note: "" },
+                        { id: "us.anthropic.claude-sonnet-4-5-20250929-v1:0", label: "Claude Sonnet 4.5 (2025-09-29)", note: "" },
+                        { id: "us.anthropic.claude-haiku-4-5-20251001-v1:0", label: "Claude Haiku 4.5 (2025-10-01)", note: "" },
+                    ],
+                },
+                {
+                    category: "Meta Llama Series",
+                    models: [
+                        { id: "us.meta.llama3-2-90b-instruct-v1:0", label: "Llama 3.2 90B Instruct", note: "Large" },
+                        { id: "us.meta.llama3-2-11b-instruct-v1:0", label: "Llama 3.2 11B Instruct", note: "Balanced" },
+                        { id: "us.meta.llama3-2-3b-instruct-v1:0", label: "Llama 3.2 3B Instruct", note: "Lightweight" },
+                        { id: "us.meta.llama3-2-1b-instruct-v1:0", label: "Llama 3.2 1B Instruct", note: "Ultra-light" },
+                        { id: "us.meta.llama3-1-70b-instruct-v1:0", label: "Llama 3.1 70B Instruct", note: "" },
+                        { id: "us.meta.llama3-1-8b-instruct-v1:0", label: "Llama 3.1 8B Instruct", note: "" },
+                        { id: "us.meta.llama3-3-70b-instruct-v1:0", label: "Llama 3.3 70B Instruct", note: "" },
+                        { id: "us.meta.llama4-scout-17b-instruct-v1:0", label: "Llama 4 Scout 17B Instruct", note: "" },
+                        { id: "us.meta.llama4-maverick-17b-instruct-v1:0", label: "Llama 4 Maverick 17B Instruct", note: "" },
+                    ],
+                },
+                {
+                    category: "Amazon Nova Series",
+                    models: [
+                        { id: "us.amazon.nova-premier-v1:0", label: "Nova Premier", note: "Most Powerful" },
+                        { id: "us.amazon.nova-pro-v1:0", label: "Nova Pro", note: "Recommended" },
+                        { id: "us.amazon.nova-lite-v1:0", label: "Nova Lite", note: "Fast" },
+                        { id: "us.amazon.nova-micro-v1:0", label: "Nova Micro", note: "Ultra-fast" },
+                    ],
+                },
+                {
+                    category: "Mistral Series",
+                    models: [
+                        { id: "us.mistral.pixtral-large-2502-v1:0", label: "Pixtral Large (2025-02)", note: "Large" },
+                        { id: "mistral.mistral-large-2402-v1:0", label: "Mistral Large (2024-02)", note: "" },
+                        { id: "mistral.mistral-small-2402-v1:0", label: "Mistral Small (2024-02)", note: "Fast" },
+                        { id: "mistral.mistral-7b-instruct-v0:2", label: "Mistral 7B Instruct v0.2", note: "" },
+                        { id: "mistral.mixtral-8x7b-instruct-v0:1", label: "Mixtral 8x7B Instruct v0.1", note: "" },
+                    ],
+                },
+                {
+                    category: "DeepSeek Series",
+                    models: [
+                        { id: "us.deepseek.r1-v1:0", label: "DeepSeek R1", note: "Latest" },
+                    ],
+                },
+            ],
+        };
+
+        function formatModelOption(entry) {
+            const label = entry.label || entry.id;
+            return entry.note ? `${label} · ${entry.note}` : label;
+        }
+
+        function populateModelSelect(catalog, defaultId) {
+            modelSelect.innerHTML = '';
+            catalog.forEach(group => {
+                const optGroup = document.createElement('optgroup');
+                optGroup.label = group.category;
+                (group.models || []).forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    option.textContent = formatModelOption(model);
+                    optGroup.appendChild(option);
+                });
+                if (optGroup.children.length > 0) {
+                    modelSelect.appendChild(optGroup);
+                }
+            });
+            if (!modelSelect.options.length) {
+                const option = document.createElement('option');
+                option.value = defaultId || '';
+                option.textContent = defaultId || 'No models available';
+                modelSelect.appendChild(option);
+            }
+            if (defaultId) {
+                modelSelect.value = defaultId;
+            }
+            modelSelect.disabled = false;
+        }
+
+        async function loadModelCatalog() {
+            try {
+                const response = await fetch(`${API_BASE}/models`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                defaultModelId = data.default || FALLBACK_MODEL_CATALOG.default;
+                populateModelSelect(data.catalog || [], defaultModelId);
+                modelStatus.textContent = '';
+                modelStatus.classList.add('hidden');
+            } catch (error) {
+                console.warn('Falling back to built-in catalog', error);
+                defaultModelId = FALLBACK_MODEL_CATALOG.default;
+                populateModelSelect(FALLBACK_MODEL_CATALOG.catalog, defaultModelId);
+                modelStatus.textContent = 'Using built-in model list (unable to fetch latest catalog).';
+                modelStatus.classList.remove('hidden');
+            }
+        }
+
+        loadModelCatalog();
+
+        function formatMetricValue(value) {
+            if (value === null || value === undefined) return 'N/A';
+            return typeof value === 'number' ? value.toFixed(3) : value;
+        }
+
+        function renderEvalResults(result) {
+            if (!result || !result.aggregate) {
+                evalSummary.innerHTML = '<p class="text-red-300">Eval returned no data.</p>';
+                evalScenarios.innerHTML = '';
+                lastEvalData = null;
+                metricFrameworkData = null;
+                toggleMetricBtn.disabled = true;
+                metricFrameworkPanel.classList.add('hidden');
+                filteredScenarios = [];
+                currentScenarioIndex = -1;
+                scenarioTraceViewer.classList.add('hidden');
+                prevScenarioBtn.disabled = true;
+                nextScenarioBtn.disabled = true;
+                return;
+            }
+
+            const agg = result.aggregate;
+            evalSummary.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-3 bg-gray-900 rounded-md">
+                        <p class="text-xs uppercase text-gray-400 tracking-wider">Precision</p>
+                        <p class="text-xl font-bold text-white">${formatMetricValue(agg.precision)}</p>
+                        <p class="text-xs text-gray-500">TP / (TP + FP)</p>
+                    </div>
+                    <div class="p-3 bg-gray-900 rounded-md">
+                        <p class="text-xs uppercase text-gray-400 tracking-wider">Recall</p>
+                        <p class="text-xl font-bold text-white">${formatMetricValue(agg.recall)}</p>
+                        <p class="text-xs text-gray-500">TP / (TP + FN)</p>
+                    </div>
+                    <div class="p-3 bg-gray-900 rounded-md">
+                        <p class="text-xs uppercase text-gray-400 tracking-wider">Accuracy</p>
+                        <p class="text-xl font-bold text-white">${formatMetricValue(agg.accuracy)}</p>
+                        <p class="text-xs text-gray-500">Overall</p>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-gray-400">
+                    Steps: ${agg.total_steps}, Tampered: ${agg.tampered_steps}, Clean: ${agg.clean_steps},
+                    TP: ${agg.true_positive}, FP: ${agg.false_positive}, FN: ${agg.false_negative}, TN: ${agg.true_negative}
+                </p>
+            `;
+
+            lastEvalData = result;
+            metricFrameworkData = result.metric_framework || null;
+            toggleMetricBtn.disabled = !metricFrameworkData;
+            if (!metricFrameworkData) {
+                metricFrameworkPanel.classList.add('hidden');
+            }
+
+            filteredScenarios = result.scenarios || [];
+            currentScenarioIndex = filteredScenarios.length ? 0 : -1;
+            prevScenarioBtn.disabled = filteredScenarios.length <= 1;
+            nextScenarioBtn.disabled = filteredScenarios.length <= 1;
+
+            evalScenarios.innerHTML = '';
+            filteredScenarios.forEach((scenario, index) => {
+                const m = scenario.metrics || {};
+                const card = document.createElement('div');
+                card.className = 'p-4 bg-gray-900 rounded-lg border border-gray-700 cursor-pointer hover:border-indigo-500 transition';
+                card.dataset.index = index;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-white">${scenario.label || scenario.id}</p>
+                            <p class="text-xs text-gray-400">${scenario.prompt}</p>
+                        </div>
+                        <div class="text-right text-sm text-gray-300">
+                            <p>Precision: ${formatMetricValue(m.precision)}</p>
+                            <p>Recall: ${formatMetricValue(m.recall)}</p>
+                        </div>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500">
+                        Steps ${m.total_steps || 0}, Tampered ${m.tampered_steps || 0}, TP ${m.true_positive || 0}, FP ${m.false_positive || 0}
+                    </p>
+                    `;
+                evalScenarios.appendChild(card);
+                card.addEventListener('click', () => {
+                    currentScenarioIndex = index;
+                    showScenarioTrace(scenario);
+                });
+            });
+
+            if (filteredScenarios.length) {
+                showScenarioTrace(filteredScenarios[currentScenarioIndex]);
+            } else {
+                scenarioTraceViewer.classList.add('hidden');
+            }
+        }
+
+        function showScenarioTrace(scenario) {
+            if (!scenario) {
+                scenarioTraceViewer.classList.add('hidden');
+                return;
+            }
+            traceTitle.textContent = `Scenario: ${scenario.label || scenario.id}`;
+            traceContent.textContent = JSON.stringify(scenario.trace || [], null, 2);
+            scenarioTraceViewer.classList.remove('hidden');
+        }
+
+        evalBtn.addEventListener('click', async () => {
+            const modelId = modelSelect.value || defaultModelId;
+            evalBtn.disabled = true;
+            evalBtnText.innerText = 'Evaluating...';
+            evalSpinner.classList.remove('hidden');
+            evalSummary.innerHTML = '';
+            evalScenarios.innerHTML = '';
+
+            try {
+                const payload = { model: modelId };
+                const countVal = parseInt((evalCountInput.value || '').trim(), 10);
+                if (!Number.isNaN(countVal) && countVal > 0) {
+                    payload.count = countVal;
+                }
+                const response = await fetch(`${API_BASE}/run_eval`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'Eval failed');
+                }
+                const data = await response.json();
+                renderEvalResults(data);
+            } catch (error) {
+                evalSummary.innerHTML = `<p class="text-red-300">Eval Error: ${error.message}</p>`;
+            }
+
+            evalBtn.disabled = false;
+            evalBtnText.innerText = 'Run Eval Suite';
+            evalSpinner.classList.add('hidden');
+        });
+
+        function renderMetricFramework(data) {
+            if (!data || !data.categories) {
+                metricFrameworkList.innerHTML = '<p class="text-red-300 text-sm">No metric data available.</p>';
+                return;
+            }
+            metricFrameworkList.innerHTML = data.categories
+                .map(category => {
+                    const items = (category.metrics || [])
+                        .map(metric => `
+                            <div class="flex justify-between py-1 border-b border-gray-800 text-sm">
+                                <div>
+                                    <p class="text-white font-semibold">${metric.name}</p>
+                                    <p class="text-xs text-gray-400">${metric.description || ''}</p>
+                                </div>
+                                <div class="text-indigo-300 text-sm font-mono pl-4">
+                                    ${metric.value === null || metric.value === undefined ? 'N/A' : (typeof metric.value === 'object' ? JSON.stringify(metric.value, null, 2) : metric.value)}
+                                </div>
+                            </div>
+                        `)
+                        .join('');
+                    return `
+                        <div class="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                            <h4 class="text-lg font-semibold text-amber-300">${category.title}</h4>
+                            <div class="mt-3 space-y-2">${items}</div>
+                        </div>
+                    `;
+                })
+                .join('');
+        }
+
+        toggleMetricBtn.addEventListener('click', () => {
+            if (!metricFrameworkData) return;
+            if (metricFrameworkPanel.classList.contains('hidden')) {
+                renderMetricFramework(metricFrameworkData);
+                metricFrameworkPanel.classList.remove('hidden');
+            } else {
+                metricFrameworkPanel.classList.add('hidden');
+            }
+        });
+
+        closeMetricPanelBtn.addEventListener('click', () => {
+            metricFrameworkPanel.classList.add('hidden');
+        });
+
+        closeTraceBtn.addEventListener('click', () => {
+            scenarioTraceViewer.classList.add('hidden');
+        });
+
+        scenarioSearch.addEventListener('input', () => {
+            if (!lastEvalData || !lastEvalData.scenarios) return;
+            const query = scenarioSearch.value.trim().toLowerCase();
+            filteredScenarios = lastEvalData.scenarios.filter(s =>
+                (s.id || '').toLowerCase().includes(query) ||
+                (s.label || '').toLowerCase().includes(query)
+            );
+            evalScenarios.innerHTML = '';
+            filteredScenarios.forEach((scenario, index) => {
+                const m = scenario.metrics || {};
+                const card = document.createElement('div');
+                card.className = 'p-4 bg-gray-900 rounded-lg border border-gray-700 cursor-pointer hover:border-indigo-500 transition';
+                card.dataset.index = index;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-white">${scenario.label || scenario.id}</p>
+                            <p class="text-xs text-gray-400">${scenario.prompt}</p>
+                        </div>
+                        <div class="text-right text-sm text-gray-300">
+                            <p>Precision: ${formatMetricValue(m.precision)}</p>
+                            <p>Recall: ${formatMetricValue(m.recall)}</p>
+                        </div>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500">
+                        Steps ${m.total_steps || 0}, Tampered ${m.tampered_steps || 0}, TP ${m.true_positive || 0}, FP ${m.false_positive || 0}
+                    </p>
+                `;
+                evalScenarios.appendChild(card);
+                card.addEventListener('click', () => {
+                    currentScenarioIndex = index;
+                    showScenarioTrace(scenario);
+                });
+            });
+            currentScenarioIndex = filteredScenarios.length ? 0 : -1;
+            if (filteredScenarios.length) {
+                showScenarioTrace(filteredScenarios[0]);
+            } else {
+                scenarioTraceViewer.classList.add('hidden');
+            }
+            prevScenarioBtn.disabled = filteredScenarios.length <= 1;
+            nextScenarioBtn.disabled = filteredScenarios.length <= 1;
+        });
+
+        prevScenarioBtn.addEventListener('click', () => {
+            if (!filteredScenarios.length) return;
+            currentScenarioIndex = (currentScenarioIndex - 1 + filteredScenarios.length) % filteredScenarios.length;
+            showScenarioTrace(filteredScenarios[currentScenarioIndex]);
+        });
+
+        nextScenarioBtn.addEventListener('click', () => {
+            if (!filteredScenarios.length) return;
+            currentScenarioIndex = (currentScenarioIndex + 1) % filteredScenarios.length;
+            showScenarioTrace(filteredScenarios[currentScenarioIndex]);
+        });
+
+        /**
+         * Renders a single node in the graph visualizer.
+         */
+        function renderGraphNode(node, isFirst) {
+            const nodeEl = document.createElement('div');
+            
+            // Add connector arrow (unless it's the first node)
+            if (!isFirst) {
+                nodeEl.innerHTML += `<div class="connector"></div>`;
+            }
+
+            // Determine color based on confabulation score
+            let borderColor = 'border-gray-600';
+            let scoreColor = 'text-gray-400';
+            let failureReasonHTML = '';
+            let scoreText = 'N/A';
+            let introspectionHTML = '';
+            let tamperHTML = '';
+
+            // Only score steps that are scorable (not 0.0)
+            if (node.confabulation_score > 0 || node.audit_reason.startsWith("Confabulation")) {
+                scoreText = `Score: ${node.confabulation_score.toFixed(3)}`;
+                if (node.confabulation_score < 0.5) {
+                    borderColor = 'border-red-500'; // Confabulation
+                    scoreColor = 'text-red-400';
+                    failureReasonHTML = `<p class="text-xs text-red-300 mt-1">${node.audit_reason}</p>`;
+                } else if (node.confabulation_score < 0.8) {
+                    borderColor = 'border-yellow-500'; // Ambiguous
+                    scoreColor = 'text-yellow-400';
+                    failureReasonHTML = `<p class="text-xs text-yellow-300 mt-1">${node.audit_reason}</p>`;
+                } else {
+                    borderColor = 'border-green-500'; // OK
+                    scoreColor = 'text-green-400';
+                    failureReasonHTML = `<p class="text-xs text-green-300 mt-1">${node.audit_reason}</p>`;
+                }
+            } else if (node.state === 'ERROR') {
+                 borderColor = 'border-red-500';
+                 scoreColor = 'text-red-400';
+                 scoreText = 'AGENT ERROR';
+            }
+
+            if (node.introspection_alignment) {
+                let alignBorder = 'border-gray-700';
+                let alignText = 'text-gray-300';
+                if (node.introspection_alignment === 'MISALIGNED') {
+                    alignBorder = 'border-red-600';
+                    alignText = 'text-red-300';
+                } else if (node.introspection_alignment === 'ALIGNED') {
+                    alignBorder = 'border-green-600';
+                    alignText = 'text-green-300';
+                } else {
+                    alignBorder = 'border-yellow-600';
+                    alignText = 'text-yellow-300';
+                }
+                const confidence = typeof node.introspection_confidence === 'number'
+                    ? node.introspection_confidence.toFixed(2)
+                    : 'N/A';
+                introspectionHTML = `
+                    <div class="mt-3">
+                        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Introspection Self-Report</h4>
+                        <div class="mt-2 p-3 bg-gray-900 rounded-md border ${alignBorder}">
+                            <p class="text-sm ${alignText} font-semibold">${node.introspection_alignment} · Confidence ${confidence}</p>
+                            <p class="text-sm text-gray-300 mt-1">${node.introspection_explanation || ''}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            if (node.tamper_metadata && node.tamper_metadata.tampered) {
+                tamperHTML = `
+                    <div class="mt-3">
+                        <h4 class="text-xs font-semibold text-rose-300 uppercase tracking-wider">Tampering</h4>
+                        <div class="mt-2 p-3 bg-gray-900 rounded-md border border-rose-600">
+                            <p class="text-sm text-rose-200 font-semibold">${node.tamper_metadata.tamper_type || 'unknown tamper'}</p>
+                            <p class="text-sm text-rose-300 mt-1">${node.tamper_metadata.tamper_note || 'Injected mismatch for evaluation.'}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Create the main node body
+            const nodeBody = document.createElement('div');
+            nodeBody.className = `p-4 bg-gray-800 rounded-lg shadow-lg border-l-4 ${borderColor}`;
+            
+            nodeBody.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-full">${node.state || 'NODE'}</span>
+                    <span class="text-xs font-mono ${scoreColor}">
+                        ${scoreText}
+                    </span>
+                </div>
+                <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Intention (Thought) Column -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-300 uppercase tracking-wider">Intention (Thought)</h4>
+                        <div class="mt-2 p-3 bg-gray-900 rounded-md h-full">
+                            <p class="text-sm text-gray-300 italic">"${node.thought || '...'}"</p>
+                        </div>
+                    </div>
+                    <!-- Action (Tool Call) Column -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-300 uppercase tracking-wider">Action</h4>
+                        <div class="mt-2 p-3 bg-gray-900 rounded-md h-full">
+                            <pre class="text-sm text-blue-300 whitespace-pre-wrap">${node.action || 'None'}</pre>
+                        </div>
+                    </div>
+                </div>
+                <!-- Failure Analysis -->
+                ${failureReasonHTML ? `<div class="mt-3">${failureReasonHTML}</div>` : ''}
+                ${introspectionHTML}
+                ${tamperHTML}
+            `;
+            
+            nodeEl.appendChild(nodeBody);
+            traceLog.appendChild(nodeEl);
+        }
+
+        runBtn.addEventListener('click', async () => {
+            runBtn.disabled = true;
+            runBtnText.innerText = "Auditing...";
+            loadingSpinner.classList.remove('hidden');
+            traceLog.innerHTML = ""; // Clear old trace
+            tracePlaceholder.classList.add('hidden');
+
+            const userPrompt = userInput.value;
+            const modelId = modelSelect.value || defaultModelId;
+
+            try {
+                const response = await fetch(`${API_BASE}/run_audit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: userPrompt, model: modelId }),
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || "Failed to run audit");
+                }
+
+                const fullGraphTrace = await response.json();
+
+                // Render the graph
+                fullGraphTrace.forEach((node, index) => {
+                    renderGraphNode(node, index === 0);
+                });
+
+            } catch (error) {
+                traceLog.innerHTML = `<div class="p-4 rounded-md bg-red-800 text-red-200"><strong>APP ERROR:</strong> ${error.message}</div>`;
+            }
+
+            runBtn.disabled = false;
+            runBtnText.innerText = "Run Audit";
+            loadingSpinner.classList.add('hidden');
+            if (traceLog.innerHTML === "") {
+                tracePlaceholder.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
